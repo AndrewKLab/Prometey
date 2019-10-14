@@ -43,6 +43,68 @@ const theme = {
   }
 };
 
+class Loading extends Component {
+
+  static navigationOptions = ({navigation}) => {
+    return{
+      header: null,
+   }
+  }
+
+  constructor(props) {
+      super(props);
+
+      this.state = {
+        user_data: [],
+      }
+  }
+
+componentWillMount() {
+    db.transaction(tx => {
+      tx.executeSql(
+        'create table if not exists user (id integer primary key not null, access_token text)'
+      );
+      tx.executeSql(
+        'select access_token from user',
+        [],
+        (tx, results) => {
+          var temp = [];
+          for (let i = 0; i < results.rows.length; ++i) {
+            temp.push(results.rows.item(i));
+          }
+
+          this.setState({
+            user_data: temp,
+          });
+          console.log((this.state.user_data.map((item, key) => (item.access_token))).toString());
+          if((this.state.user_data.map((item, key) => (item.access_token))).toString() == "sucess"){
+            console.log("1");
+            this.props.navigation.navigate('Home')
+          } else {
+            console.log("2");
+          this.props.navigation.navigate('Login')
+          }
+        },
+      );
+  },
+  error => console.log('something went wrong:' + error),
+  () => console.log('table user create')
+);
+
+
+}
+
+
+
+    render() {
+
+
+        return (
+            <View></View>
+            )
+    }
+}
+
 class Login extends Component {
 
   static navigationOptions = ({navigation}) => {
@@ -58,27 +120,41 @@ class Login extends Component {
         username: '',
         password: '',
         err: '',
+        user_data: [],
       }
   }
 
-  componentWillMount() {
-    db.transaction(tx => {
-      tx.executeSql(
-        'create table if not exists user (id integer primary key not null, access_token text)'
-      );
-      tx.executeSql(
-        'insert or ignore into user (access_token) values (?)' ['null'],
-      );
-  })
+componentDidMount() {
+
 }
 
   _Login = () => {
 
     if (this.state.username == 'alxystv@yandex.ru' && this.state.password == 'password' ){
+      db.transaction(tx => {
+        tx.executeSql(
+  'insert or IGNORE into user (id, access_token) values (?, ?)', [1, 'sucess']
+);
+      tx.executeSql(
+        'select * from user',
+        [],
+        (tx, results) => {
+          var temp = [];
+          for (let i = 0; i < results.rows.length; ++i) {
+            temp.push(results.rows.item(i));
+          }
+
+          this.setState({
+            user_data: temp,
+          });
+          console.log(JSON.stringify(this.state.user_data));
+
+        },
+      );
+    })
         this.props.navigation.navigate('Home')
       } else {
         this.setState({ err: 'Неверно введен логин или пароль.' })
-        console.log(this.state.err)
       }
 
     axios.post('http://api.прометей24.рф/api/login/', {
@@ -99,39 +175,42 @@ class Login extends Component {
   }
 
     render() {
+
+
         return (
-            <View style={{padding: 20, backgroundColor: '#212529', flex: 1, justifyContent: 'center'}}>
+            <View style={{padding: 20, backgroundColor: '#fff', flex: 1, justifyContent: 'center'}}>
                 <Image
-                source={require('./assets/logo.png')}
+                source={require('./assets/logo_login.png')}
                 style={{
-                    width: windowWidth * 0.8,
+                    width: windowWidth * 1,
                     height: windowHeight * 0.125,
                     marginBottom: 20,
+                    alignSelf: 'center'
                       }}
                 />
 
                 <TextInput style={{
-                color: '#fff',
+                color: '#212529',
                 marginBottom: 10,
                 height: 40,
-                borderBottomColor: '#fff',
+                borderBottomColor: '#212529',
                 borderBottomWidth: 0.5}}
                 placeholder='   Логин'
-                placeholderTextColor = "#fff"
+                placeholderTextColor = "#212529"
                 value={this.state.username}
                 onChangeText={username => this.setState({ username })}  />
                 <TextInput style={{
                 height: 40,
-                color: '#fff',
-                borderBottomColor: '#fff',
+                color: '#212529',
+                borderBottomColor: '#212529',
                 borderBottomWidth: 0.5}}
                 placeholder='   Пароль'
-                placeholderTextColor = "#fff"
+                placeholderTextColor = "#212529"
                 value={this.state.password}
                 onChangeText={password => this.setState({ password })}
                 secureTextEntry = {true}  />
                 <View style={{margin:5}} />
-                <Text style={{color: '#fff'}}>{this.state.err}</Text>
+                <Text style={{color: '#212529'}}>{this.state.err}</Text>
                 <View style={{margin:5}} />
                       <Button
                        theme={theme}
@@ -164,6 +243,7 @@ class HomeScreen extends React.Component {
           tag: {},
           dataDevice: [],
           isVisible: false,
+          user_data:[]
 
       }
   }
@@ -201,6 +281,15 @@ class HomeScreen extends React.Component {
       return (
 
                     <ScrollView style={{backgroundColor: '#f7f7f7'}}>
+                    <View style={{ flexDirection: 'row'}}>
+                    <Button
+                     theme={theme}
+                     mode="text"
+                     onPress={() => this.goToLogin()}
+                     color='#e90052'>
+                        <Text>Выйти</Text>
+                    </Button>
+                    </View>
                     <View style={{justifyContent: 'center', }}>
                     <Card style={{marginBottom: -4}}>
                     <View style={{justifyContent: 'center', alignItems: 'center',}}>
@@ -218,7 +307,7 @@ class HomeScreen extends React.Component {
                     </View>
                     </View>
                     </Card>
-                    <View style={{justifyContent: 'center', alignItems: 'flex-end',}}>
+                    <View style={{ flexDirection: 'row-reverse'}}>
                     <Card style={{
                       height: 50,
                        width: 50,
@@ -288,6 +377,36 @@ class HomeScreen extends React.Component {
                 </ScrollView>
 
       )
+  }
+
+  goToLogin(){
+    db.transaction(tx => {
+      tx.executeSql(
+'UPDATE user SET access_token = "null" WHERE access_token = "sucess"'
+);
+tx.executeSql(
+  'select access_token from user',
+  [],
+  (tx, results) => {
+    var temp = [];
+    for (let i = 0; i < results.rows.length; ++i) {
+      temp.push(results.rows.item(i));
+    }
+
+    this.setState({
+      user_data: temp,
+    });
+    console.log((this.state.user_data.map((item, key) => (item.access_token))).toString());
+    if((this.state.user_data.map((item, key) => (item.access_token))).toString() == "null"){
+      console.log("1");
+      this.props.navigation.navigate('Login')
+    } else {
+      console.log("2");
+    this.props.navigation.navigate('Home')
+    }
+  },
+);
+  })
   }
 
   _startNfc() {
@@ -637,6 +756,9 @@ isntEn: {
 
 
 const AppNavigator = createStackNavigator({
+  Loading:{
+    screen: Loading,
+  },
   Login:{
     screen: Login,
   },
@@ -647,7 +769,7 @@ const AppNavigator = createStackNavigator({
     screen: DetailsScreen,
   },
 }, {
-    initialRouteName: 'Login',
+    initialRouteName: 'Loading',
 
     defaultNavigationOptions: {
       headerStyle: {
@@ -657,7 +779,13 @@ const AppNavigator = createStackNavigator({
       headerTitleStyle: {
         fontWeight: 'bold',
       },
+
     },
+    transitionConfig: () => ({
+    transitionSpec: {
+      duration: 0,  // Set the animation duration time as 0 !!
+    },
+  }),
 });
 
 
